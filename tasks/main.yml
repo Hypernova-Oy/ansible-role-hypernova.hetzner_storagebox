@@ -1,0 +1,28 @@
+---
+
+- name: Install dependencies
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: latest
+    update_cache: yes
+    cache_valid_time: 3600
+  with_items:
+    - sshfs
+    - sshpass
+
+- name: Create base dir
+  ansible.builtin.file:
+    path: "{{ hetzner_storageboxes_base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- include_tasks: add_hetzner_storagebox.yml
+  with_items: "{{ hetzner_storageboxes }}"
+  loop_control:
+    loop_var: hetzner_storagebox
+  no_log: true
+
+- name: Mount
+  ansible.builtin.command: mount -a

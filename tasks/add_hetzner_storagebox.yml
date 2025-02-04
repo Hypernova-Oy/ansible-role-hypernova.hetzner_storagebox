@@ -1,0 +1,57 @@
+---
+
+- name: Create /root/.ssh directory
+  ansible.builtin.file:
+    path: /root/.ssh
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Create ssh key for accessing storagebox
+  community.crypto.openssh_keypair:
+    path: "/root/.ssh/id_rsa_{{ hetzner_storagebox.name }}"
+
+- name: Check if storagebox dir exists
+  ansible.builtin.stat:
+    path: "{{ hetzner_storageboxes_base_dir }}/{{ hetzner_storagebox.name }}"
+  register: stat_result
+
+- name: Create storagebox dir
+  ansible.builtin.file:
+    path: "{{ hetzner_storageboxes_base_dir }}/{{ hetzner_storagebox.name }}"
+    state: directory
+    owner: "{{ hetzner_storagebox.fstab_owner }}"
+    group: "{{ hetzner_storagebox.fstab_group }}"
+    mode: '0755'
+  when: not stat_result.stat.exists
+
+- name: install-ssh-key
+  ansible.builtin.shell: 'cat /root/.ssh/id_rsa_{{ hetzner_storagebox.name }}.pub | sshpass -vvv -e ssh -p23 -i /root/.ssh/id_rsa_{{ hetzner_storagebox.name }} -vvv -o StrictHostKeyChecking=accept-new {{ hetzner_storagebox.username }}@{{ hetzner_storagebox.hostname }} "install-ssh-key"'
+  changed_when:
+    - "'is already configured in' not in ssh_copy_id.stdout"
+  failed_when: ssh_copy_id.rc != 0
+  register: ssh_copy_id
+  environment:
+    SSHPASS: "{{ hetzner_storagebox.password }}"
+  no_log: true
+
+- name: Convert username into uid
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ hetzner_storagebox.fstab_owner }}"
+
+- name: Convert group into gid
+  ansible.builtin.getent:
+    database: group
+    key: "{{ hetzner_storagebox.fstab_group }}"
+
+- name: Add entry in /etc/fstab
+  ansible.builtin.blockinfile:
+    path: "/etc/fstab"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+    block: |
+      sshfs#{{ hetzner_storagebox.username }}@{{ hetzner_storagebox.hostname }}:{{ hetzner_storagebox.dir | default('/') }} {{ hetzner_storageboxes_base_dir }}/{{ hetzner_storagebox.name }} fuse delay_connect,idmap=user,allow_other,uid={{ getent_passwd[hetzner_storagebox.fstab_owner][1] | default(0) }},gid={{ getent_group[hetzner_storagebox.fstab_group][1] | default(0) }},_netdev,reconnect,IdentityFile=/root/.ssh/id_rsa_{{ hetzner_storagebox.name }},StrictHostKeyChecking=accept-new,ServerAliveInterval=120,ServerAliveCountMax=2 0 0

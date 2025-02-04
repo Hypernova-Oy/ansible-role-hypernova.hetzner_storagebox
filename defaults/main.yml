@@ -1,0 +1,11 @@
+---
+
+hetzner_storageboxes_base_dir: /hetzner_storagebox
+
+#hetzner_storageboxes:
+#  - name: storagebox-1
+#    username: u000000
+#    password: "{{ vault_hetzner_storagebox_myuser_password }}"
+#    hostname: u000000.your-storagebox.de
+#    fstab_owner: myuser
+#    fstab_group: mygroup

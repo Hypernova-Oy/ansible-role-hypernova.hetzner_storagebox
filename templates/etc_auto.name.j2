@@ -1,0 +1,1 @@
+sshfs#{{ hetzner_storagebox.username }}@{{ hetzner_storagebox.hostname }}:{{ hetzner_storagebox.dir | default('/') }} {{ hetzner_storageboxes_base_dir }}/{{ hetzner_storagebox.name }} fuse delay_connect,idmap_user,uid=0,gid=0,allow_other,_netdev,reconnect 0 0
